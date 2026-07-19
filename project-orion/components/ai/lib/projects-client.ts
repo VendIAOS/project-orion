@@ -9,6 +9,8 @@ export interface SavedProject {
   originProjectId?: string;
   originProjectMode?: string;
   originProjectTitle?: string;
+  productionStatus?: ArtifactProductionStatus;
+  productionStatusUpdatedAt?: string;
 }
 
 export interface ProjectVersion {
@@ -75,6 +77,37 @@ export function loadArtifactProductionStatuses() {
   }
 }
 
+function persistArtifactProductionStatuses(statuses: Record<string, ArtifactProductionState>) {
+  window.localStorage.setItem(ARTIFACT_PRODUCTION_STATUS_KEY, JSON.stringify(statuses));
+  window.dispatchEvent(new Event(ARTIFACT_PRODUCTION_STATUS_EVENT));
+}
+
+function mergeServerProductionStatuses(projects: SavedProject[]) {
+  const statuses = loadArtifactProductionStatuses();
+  let changed = false;
+
+  projects.forEach((project) => {
+    if (!project.productionStatus) {
+      return;
+    }
+
+    const current = statuses[project.id];
+    const nextUpdatedAt = project.productionStatusUpdatedAt ?? project.createdAt;
+
+    if (!current || new Date(nextUpdatedAt).getTime() >= new Date(current.updatedAt).getTime()) {
+      statuses[project.id] = {
+        status: project.productionStatus,
+        updatedAt: nextUpdatedAt,
+      };
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    persistArtifactProductionStatuses(statuses);
+  }
+}
+
 export function getArtifactProductionStatus(projectId: string) {
   return loadArtifactProductionStatuses()[projectId]?.status ?? "draft";
 }
@@ -87,10 +120,59 @@ export function updateArtifactProductionStatus(projectId: string, status: Artifa
     updatedAt: new Date().toISOString(),
   };
 
-  window.localStorage.setItem(ARTIFACT_PRODUCTION_STATUS_KEY, JSON.stringify(statuses));
-  window.dispatchEvent(new Event(ARTIFACT_PRODUCTION_STATUS_EVENT));
+  persistArtifactProductionStatuses(statuses);
 
   return statuses[projectId];
+}
+
+export async function updateSyncedArtifactProductionStatus(projectId: string, status: ArtifactProductionStatus) {
+  const localState = updateArtifactProductionStatus(projectId, status);
+
+  if (!isUuid(projectId)) {
+    return {
+      state: localState,
+      source: "local" as const,
+    };
+  }
+
+  try {
+    const response = await fetch(`/api/projects?id=${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      headers: getAuthHeaders({
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({
+        action: "production_status",
+        productionStatus: status,
+      }),
+    });
+
+    if (!response.ok) {
+      return {
+        state: localState,
+        source: "local" as const,
+      };
+    }
+
+    const data = (await response.json()) as SaveProjectResponse;
+    const serverState: ArtifactProductionState = {
+      status: data.project?.productionStatus ?? status,
+      updatedAt: data.project?.productionStatusUpdatedAt ?? localState.updatedAt,
+    };
+    const statuses = loadArtifactProductionStatuses();
+    statuses[projectId] = serverState;
+    persistArtifactProductionStatuses(statuses);
+
+    return {
+      state: serverState,
+      source: data.source === "supabase" ? ("supabase" as const) : ("local" as const),
+    };
+  } catch {
+    return {
+      state: localState,
+      source: "local" as const,
+    };
+  }
 }
 
 export function loadLocalProjects() {
@@ -190,6 +272,7 @@ export async function loadSyncedProjects() {
     }
 
     const serverProjects = data.projects ?? [];
+    mergeServerProductionStatuses(serverProjects);
     const projects = mergeProjects(serverProjects, localProjects);
     persistLocalProjects(projects, { notify: false });
 

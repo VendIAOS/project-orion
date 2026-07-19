@@ -1023,3 +1023,13 @@ Proximo passo:
 
 Proximo passo:
 - Persistir o pipeline no Supabase metadata e adicionar filtros por status em Projetos.
+
+## Build 1.1.0 - Pipeline persistido no Supabase
+
+- Status de producao dos artefatos passou a sincronizar com Supabase via `metadata`.
+- API `/api/projects` agora le e grava `productionStatus` e `productionStatusUpdatedAt` sem migration nova.
+- Alteracoes de pipeline registram evento administrativo `artifact_production_status_updated`.
+- Frontend mantem fallback local quando o artefato ainda nao tem UUID ou Supabase esta indisponivel.
+
+Proximo passo:
+- Adicionar filtros de pipeline na tela Projetos e relatorio operacional por status.

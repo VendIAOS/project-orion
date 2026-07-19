@@ -23,7 +23,7 @@ import {
   artifactProductionStatusLabels,
   loadArtifactProductionStatuses,
   loadSyncedProjects,
-  updateArtifactProductionStatus,
+  updateSyncedArtifactProductionStatus,
   type ArtifactProductionStatus,
   type ArtifactProductionState,
   type SavedProject,
@@ -190,11 +190,11 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
     }).length;
   }, [libraryProjects, productionStatuses]);
 
-  function changeProductionStatus(projectId: string, status: ArtifactProductionStatus) {
-    const nextStatus = updateArtifactProductionStatus(projectId, status);
+  async function changeProductionStatus(projectId: string, status: ArtifactProductionStatus) {
+    const result = await updateSyncedArtifactProductionStatus(projectId, status);
     setProductionStatuses((current) => ({
       ...current,
-      [projectId]: nextStatus,
+      [projectId]: result.state,
     }));
   }
 
@@ -346,7 +346,7 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
                       <button
                         key={status}
                         type="button"
-                        onClick={() => changeProductionStatus(project.id, status)}
+                        onClick={() => void changeProductionStatus(project.id, status)}
                         className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
                           productionStatus === status
                             ? productionStatusStyles[status]

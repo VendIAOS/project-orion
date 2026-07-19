@@ -31,7 +31,7 @@ import {
   getArtifactProductionStatus,
   loadProjectVersions,
   loadSyncedProjects,
-  updateArtifactProductionStatus,
+  updateSyncedArtifactProductionStatus,
   updateSyncedProject,
   type ArtifactProductionStatus,
   type ProjectVersion,
@@ -379,14 +379,18 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
     URL.revokeObjectURL(url);
   }
 
-  function changeProductionStatus(status: ArtifactProductionStatus) {
+  async function changeProductionStatus(status: ArtifactProductionStatus) {
     if (!project) {
       return;
     }
 
-    updateArtifactProductionStatus(project.id, status);
-    setProductionStatus(status);
-    setSaveMessage(`Status atualizado para ${artifactProductionStatusLabels[status]}.`);
+    const result = await updateSyncedArtifactProductionStatus(project.id, status);
+    setProductionStatus(result.state.status);
+    setSaveMessage(
+      result.source === "supabase"
+        ? `Status atualizado no Supabase para ${artifactProductionStatusLabels[result.state.status]}.`
+        : `Status atualizado localmente para ${artifactProductionStatusLabels[result.state.status]}.`,
+    );
     window.setTimeout(() => setSaveMessage(null), 2600);
   }
 
@@ -568,7 +572,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
                 <button
                   key={status}
                   type="button"
-                  onClick={() => changeProductionStatus(status)}
+                  onClick={() => void changeProductionStatus(status)}
                   className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
                     productionStatus === status
                       ? productionStatusStyles[status]

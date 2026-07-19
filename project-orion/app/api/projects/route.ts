@@ -15,10 +15,13 @@ interface SaveProjectBody {
 }
 
 interface UpdateProjectBody {
-  action?: "restore";
+  action?: "restore" | "production_status";
   content?: string;
   mode?: string;
+  productionStatus?: ArtifactProductionStatus;
 }
+
+type ArtifactProductionStatus = "draft" | "review" | "approved" | "exported";
 
 interface SupabaseProjectRow {
   id: string;
@@ -51,6 +54,16 @@ function isUuid(value: string) {
 function getStringMetadata(metadata: Record<string, unknown> | null | undefined, key: string) {
   const value = metadata?.[key];
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function isArtifactProductionStatus(value: unknown): value is ArtifactProductionStatus {
+  return value === "draft" || value === "review" || value === "approved" || value === "exported";
+}
+
+function getProductionStatus(metadata: Record<string, unknown> | null | undefined) {
+  const value = metadata?.productionStatus;
+
+  return isArtifactProductionStatus(value) ? value : undefined;
 }
 
 function createOriginMetadata(body: SaveProjectBody) {
@@ -106,6 +119,8 @@ export async function GET(request: Request) {
         originProjectId: getStringMetadata(project.metadata, "originProjectId"),
         originProjectMode: getStringMetadata(project.metadata, "originProjectMode"),
         originProjectTitle: getStringMetadata(project.metadata, "originProjectTitle"),
+        productionStatus: getProductionStatus(project.metadata),
+        productionStatusUpdatedAt: getStringMetadata(project.metadata, "productionStatusUpdatedAt"),
       })),
       permissions: {
         role: context.role ?? "bootstrap",
@@ -193,6 +208,8 @@ export async function POST(request: Request) {
         metadata: {
           source: "ai_studio",
           workspaceSource: context.source,
+          productionStatus: "draft",
+          productionStatusUpdatedAt: new Date().toISOString(),
           ...originMetadata,
         },
       },
@@ -216,6 +233,8 @@ export async function POST(request: Request) {
         originProjectId: getStringMetadata(artifact.metadata, "originProjectId"),
         originProjectMode: getStringMetadata(artifact.metadata, "originProjectMode"),
         originProjectTitle: getStringMetadata(artifact.metadata, "originProjectTitle"),
+        productionStatus: getProductionStatus(artifact.metadata),
+        productionStatusUpdatedAt: getStringMetadata(artifact.metadata, "productionStatusUpdatedAt"),
       },
       source: "supabase",
       workspaceSource: context.source,
@@ -415,8 +434,92 @@ export async function PATCH(request: Request) {
           originProjectId: getStringMetadata(restoredArtifact.metadata, "originProjectId"),
           originProjectMode: getStringMetadata(restoredArtifact.metadata, "originProjectMode"),
           originProjectTitle: getStringMetadata(restoredArtifact.metadata, "originProjectTitle"),
+          productionStatus: getProductionStatus(restoredArtifact.metadata),
+          productionStatusUpdatedAt: getStringMetadata(restoredArtifact.metadata, "productionStatusUpdatedAt"),
         },
         restored: true,
+        source: "supabase",
+        workspaceSource: context.source,
+      });
+    }
+
+    if (body.action === "production_status") {
+      if (!isArtifactProductionStatus(body.productionStatus)) {
+        return NextResponse.json({ error: "Status de producao invalido." }, { status: 400 });
+      }
+
+      const productionStatusUpdatedAt = new Date().toISOString();
+      const artifactUpdate = await supabaseRest<SupabaseArtifactRow[]>("artifacts", {
+        method: "PATCH",
+        query: [`id=eq.${projectId}`, `workspace_id=eq.${context.workspaceId}`].join("&"),
+        body: {
+          metadata: {
+            ...(artifact.metadata ?? {}),
+            productionStatus: body.productionStatus,
+            productionStatusUpdatedAt,
+            productionStatusUpdatedBy: context.userId,
+          },
+        },
+      });
+
+      if (artifactUpdate.error || !artifactUpdate.data?.[0]) {
+        return NextResponse.json(
+          { error: "Nao foi possivel atualizar o status de producao.", details: artifactUpdate.error },
+          { status: artifactUpdate.status },
+        );
+      }
+
+      if (artifact.project_id) {
+        const projectUpdate = await supabaseRest<unknown>("projects", {
+          method: "PATCH",
+          query: [`id=eq.${artifact.project_id}`, `workspace_id=eq.${context.workspaceId}`].join("&"),
+          body: {
+            metadata: {
+              ...(artifact.metadata ?? {}),
+              productionStatus: body.productionStatus,
+              productionStatusUpdatedAt,
+              productionStatusUpdatedBy: context.userId,
+            },
+          },
+        });
+
+        if (projectUpdate.error) {
+          return NextResponse.json(
+            { error: "Artefato atualizado, mas projeto principal nao recebeu o status.", details: projectUpdate.error },
+            { status: projectUpdate.status },
+          );
+        }
+      }
+
+      const updatedArtifact = artifactUpdate.data[0];
+
+      await recordAdminAuditEvent({
+        workspaceId: context.workspaceId,
+        actorUserId: context.userId,
+        eventType: "artifact_production_status_updated",
+        targetType: "artifact",
+        targetId: projectId,
+        metadata: {
+          projectId: artifact.project_id,
+          mode: artifact.mode,
+          title: artifact.title,
+          productionStatus: body.productionStatus,
+          productionStatusUpdatedAt,
+        },
+      });
+
+      return NextResponse.json({
+        project: {
+          id: updatedArtifact.id,
+          mode: updatedArtifact.mode,
+          content: updatedArtifact.content,
+          createdAt: updatedArtifact.created_at,
+          originProjectId: getStringMetadata(updatedArtifact.metadata, "originProjectId"),
+          originProjectMode: getStringMetadata(updatedArtifact.metadata, "originProjectMode"),
+          originProjectTitle: getStringMetadata(updatedArtifact.metadata, "originProjectTitle"),
+          productionStatus: getProductionStatus(updatedArtifact.metadata),
+          productionStatusUpdatedAt: getStringMetadata(updatedArtifact.metadata, "productionStatusUpdatedAt"),
+        },
         source: "supabase",
         workspaceSource: context.source,
       });
@@ -486,6 +589,8 @@ export async function PATCH(request: Request) {
         mode: updatedArtifact.mode,
         content: updatedArtifact.content,
         createdAt: updatedArtifact.created_at,
+        productionStatus: getProductionStatus(updatedArtifact.metadata),
+        productionStatusUpdatedAt: getStringMetadata(updatedArtifact.metadata, "productionStatusUpdatedAt"),
       },
       source: "supabase",
       workspaceSource: context.source,
