@@ -10,13 +10,24 @@ import {
   ExternalLink,
   FileText,
   ImageIcon,
+  Send,
   Search,
   Sparkles,
   UserRound,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { loadSyncedProjects, type SavedProject } from "@/components/ai/lib/projects-client";
+import {
+  ARTIFACT_PRODUCTION_STATUS_EVENT,
+  artifactProductionStatusDescriptions,
+  artifactProductionStatusLabels,
+  loadArtifactProductionStatuses,
+  loadSyncedProjects,
+  updateArtifactProductionStatus,
+  type ArtifactProductionStatus,
+  type ArtifactProductionState,
+  type SavedProject,
+} from "@/components/ai/lib/projects-client";
 import { formatProjectDate, getProjectArtifact, getProjectObjective } from "@/components/projects/project-format";
 
 const MESSAGES_KEY = "vendiaos.ai-studio.messages";
@@ -78,6 +89,15 @@ const LIBRARY_CONFIG = {
   }
 >;
 
+const PRODUCTION_STATUSES: ArtifactProductionStatus[] = ["draft", "review", "approved", "exported"];
+
+const productionStatusStyles: Record<ArtifactProductionStatus, string> = {
+  draft: "bg-slate-100 text-slate-600",
+  review: "bg-amber-50 text-amber-700",
+  approved: "bg-emerald-50 text-emerald-700",
+  exported: "bg-blue-50 text-blue-700",
+};
+
 function normalizeText(value: string) {
   return value
     .normalize("NFD")
@@ -122,14 +142,26 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
   const [hasLoaded, setHasLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [productionStatuses, setProductionStatuses] = useState<Record<string, ArtifactProductionState>>({});
 
   useEffect(() => {
     queueMicrotask(async () => {
       const result = await loadSyncedProjects();
       setProjects(result.projects);
       setSource(result.source);
+      setProductionStatuses(loadArtifactProductionStatuses());
       setHasLoaded(true);
     });
+
+    function handleProductionStatusUpdate() {
+      setProductionStatuses(loadArtifactProductionStatuses());
+    }
+
+    window.addEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+
+    return () => {
+      window.removeEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+    };
   }, []);
 
   const libraryProjects = useMemo(() => {
@@ -149,6 +181,22 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
   const derivedCount = useMemo(() => {
     return libraryProjects.filter((project) => project.originProjectId).length;
   }, [libraryProjects]);
+
+  const approvedOrExportedCount = useMemo(() => {
+    return libraryProjects.filter((project) => {
+      const status = productionStatuses[project.id]?.status ?? "draft";
+
+      return status === "approved" || status === "exported";
+    }).length;
+  }, [libraryProjects, productionStatuses]);
+
+  function changeProductionStatus(projectId: string, status: ArtifactProductionStatus) {
+    const nextStatus = updateArtifactProductionStatus(projectId, status);
+    setProductionStatuses((current) => ({
+      ...current,
+      [projectId]: nextStatus,
+    }));
+  }
 
   async function copyProject(project: SavedProject) {
     await navigator.clipboard.writeText(project.content);
@@ -212,13 +260,13 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <CheckCircle2 size={20} className="text-emerald-700" />
-          <p className="mt-6 text-sm text-slate-500">Origem</p>
-          <p className="mt-2 text-lg font-bold text-slate-950">{source === "supabase" ? "Supabase" : "Local"}</p>
+          <p className="mt-6 text-sm text-slate-500">Aprovados/exportados</p>
+          <p className="mt-2 text-3xl font-bold text-slate-950">{hasLoaded ? approvedOrExportedCount : "..."}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <Bot size={20} className="text-blue-700" />
-          <p className="mt-6 text-sm text-slate-500">Motor</p>
-          <p className="mt-2 text-lg font-bold text-slate-950">AI Studio</p>
+          <p className="mt-6 text-sm text-slate-500">Origem</p>
+          <p className="mt-2 text-lg font-bold text-slate-950">{source === "supabase" ? "Supabase" : "Local"}</p>
         </div>
       </section>
 
@@ -257,12 +305,16 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
         <section className="grid gap-4 lg:grid-cols-2">
           {filteredProjects.map((project) => {
             const derivations = getSourceCount(projects, project.id);
+            const productionStatus = productionStatuses[project.id]?.status ?? "draft";
 
             return (
               <article key={project.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${config.badge}`}>
                     {project.mode}
+                  </span>
+                  <span className={`ml-2 rounded-full px-3 py-1 text-xs font-semibold ${productionStatusStyles[productionStatus]}`}>
+                    {artifactProductionStatusLabels[productionStatus]}
                   </span>
                   {derivations > 0 && (
                     <span className="ml-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -276,6 +328,35 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
 
                 <div className="mt-4 flex-1 rounded-xl bg-slate-50 p-4">
                   <p className="line-clamp-6 text-sm leading-6 text-slate-600">{getArtifactPreview(project.content)}</p>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Pipeline</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {artifactProductionStatusDescriptions[productionStatus]}
+                      </p>
+                    </div>
+                    <Send size={15} className="text-slate-400" />
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {PRODUCTION_STATUSES.map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => changeProductionStatus(project.id, status)}
+                        className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
+                          productionStatus === status
+                            ? productionStatusStyles[status]
+                            : "bg-white text-slate-500 hover:bg-blue-50 hover:text-blue-700"
+                        }`}
+                      >
+                        {artifactProductionStatusLabels[status]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">

@@ -1013,3 +1013,13 @@ Proximo passo:
 
 Proximo passo:
 - Criar pipeline de producao para aprovar, exportar e acompanhar artefatos por canal.
+
+## Build 1.0.0 - Pipeline de producao de artefatos
+
+- Adicionado status operacional por artefato: Rascunho, Em revisao, Aprovado e Exportado.
+- Bibliotecas de Videos, Imagens e Avatares agora permitem mover artefatos pelo pipeline.
+- Detalhe de projeto mostra e atualiza o status de producao do artefato.
+- Dashboard principal passou a contar artefatos prontos para producao.
+
+Proximo passo:
+- Persistir o pipeline no Supabase metadata e adicionar filtros por status em Projetos.

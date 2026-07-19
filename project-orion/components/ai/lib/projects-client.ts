@@ -19,6 +19,13 @@ export interface ProjectVersion {
   reason: "edit" | "restore";
 }
 
+export type ArtifactProductionStatus = "draft" | "review" | "approved" | "exported";
+
+export interface ArtifactProductionState {
+  status: ArtifactProductionStatus;
+  updatedAt: string;
+}
+
 interface ProjectsResponse {
   projects?: SavedProject[];
   source?: "supabase" | "local-fallback";
@@ -39,6 +46,52 @@ interface PersistOptions {
 
 export const PROJECTS_KEY = "vendiaos.projects";
 export const PROJECT_VERSIONS_KEY = "vendiaos.project-versions";
+export const ARTIFACT_PRODUCTION_STATUS_KEY = "vendiaos.artifact-production-status";
+export const ARTIFACT_PRODUCTION_STATUS_EVENT = "vendiaos:artifact-production-status-updated";
+
+export const artifactProductionStatusLabels: Record<ArtifactProductionStatus, string> = {
+  draft: "Rascunho",
+  review: "Em revisao",
+  approved: "Aprovado",
+  exported: "Exportado",
+};
+
+export const artifactProductionStatusDescriptions: Record<ArtifactProductionStatus, string> = {
+  draft: "Artefato salvo, ainda sem revisao operacional.",
+  review: "Pronto para validar oferta, canal, formato e mensagem.",
+  approved: "Validado para entrar em producao ou distribuicao.",
+  exported: "Entregue para uso externo, publicacao ou execucao.",
+};
+
+export function loadArtifactProductionStatuses() {
+  try {
+    return JSON.parse(window.localStorage.getItem(ARTIFACT_PRODUCTION_STATUS_KEY) ?? "{}") as Record<
+      string,
+      ArtifactProductionState
+    >;
+  } catch {
+    window.localStorage.removeItem(ARTIFACT_PRODUCTION_STATUS_KEY);
+    return {};
+  }
+}
+
+export function getArtifactProductionStatus(projectId: string) {
+  return loadArtifactProductionStatuses()[projectId]?.status ?? "draft";
+}
+
+export function updateArtifactProductionStatus(projectId: string, status: ArtifactProductionStatus) {
+  const statuses = loadArtifactProductionStatuses();
+
+  statuses[projectId] = {
+    status,
+    updatedAt: new Date().toISOString(),
+  };
+
+  window.localStorage.setItem(ARTIFACT_PRODUCTION_STATUS_KEY, JSON.stringify(statuses));
+  window.dispatchEvent(new Event(ARTIFACT_PRODUCTION_STATUS_EVENT));
+
+  return statuses[projectId];
+}
 
 export function loadLocalProjects() {
   try {

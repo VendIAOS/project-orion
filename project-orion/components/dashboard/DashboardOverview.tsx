@@ -21,7 +21,13 @@ import {
 
 import { loadSyncedAgentRuns, type AgentRun } from "@/components/ai/lib/agent-runs-client";
 import { getAuthHeaders } from "@/components/auth/auth-fetch";
-import { loadSyncedProjects, type SavedProject } from "@/components/ai/lib/projects-client";
+import {
+  ARTIFACT_PRODUCTION_STATUS_EVENT,
+  loadArtifactProductionStatuses,
+  loadSyncedProjects,
+  type ArtifactProductionState,
+  type SavedProject,
+} from "@/components/ai/lib/projects-client";
 import { getProjectObjective } from "@/components/projects/project-format";
 
 type ServiceStatus = "ready" | "missing";
@@ -128,6 +134,7 @@ export default function DashboardOverview() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [billing, setBilling] = useState<BillingOverviewResponse | null>(null);
   const [projectStats, setProjectStats] = useState<ProjectStatsResponse["stats"] | null>(null);
+  const [productionStatuses, setProductionStatuses] = useState<Record<string, ArtifactProductionState>>({});
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
@@ -150,6 +157,7 @@ export default function DashboardOverview() {
         setProjects(projectsResult.projects);
         setAgentRuns(runsResult.runs);
         setSource(projectsResult.source);
+        setProductionStatuses(loadArtifactProductionStatuses());
 
         if (healthResponse.ok) {
           setHealth((await healthResponse.json()) as HealthResponse);
@@ -167,6 +175,16 @@ export default function DashboardOverview() {
         setHasLoaded(true);
       }
     });
+
+    function handleProductionStatusUpdate() {
+      setProductionStatuses(loadArtifactProductionStatuses());
+    }
+
+    window.addEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+
+    return () => {
+      window.removeEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+    };
   }, []);
 
   const derivedProjectsCount = useMemo(() => {
@@ -178,6 +196,11 @@ export default function DashboardOverview() {
   const supabaseReady = Boolean(health?.services.supabase.ready && health.services.bootstrap.ready);
   const agentUsage = billing?.usage?.agentRuns;
   const billingTone = agentUsage && agentUsage.percent >= 100 ? "red" : agentUsage && agentUsage.percent >= 80 ? "amber" : "emerald";
+  const approvedProductionCount = projects.filter((project) => {
+    const status = productionStatuses[project.id]?.status ?? "draft";
+
+    return status === "approved" || status === "exported";
+  }).length;
   const mediaHubs = [
     {
       title: "Videos",
@@ -262,10 +285,10 @@ export default function DashboardOverview() {
           tone="blue"
         />
         <MetricCard
-          title="Persistencia"
-          value={supabaseReady ? "Online" : "Pendente"}
-          description={supabaseReady ? "Banco real ativo" : "Complete as configuracoes"}
-          tone={supabaseReady ? "emerald" : "slate"}
+          title="Prontos para producao"
+          value={hasLoaded ? String(approvedProductionCount) : "..."}
+          description="Artefatos aprovados ou exportados"
+          tone={approvedProductionCount > 0 ? "emerald" : "slate"}
         />
       </section>
 

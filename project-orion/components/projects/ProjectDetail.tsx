@@ -24,10 +24,16 @@ import {
 } from "lucide-react";
 
 import {
+  ARTIFACT_PRODUCTION_STATUS_EVENT,
+  artifactProductionStatusDescriptions,
+  artifactProductionStatusLabels,
   deleteSyncedProject,
+  getArtifactProductionStatus,
   loadProjectVersions,
   loadSyncedProjects,
+  updateArtifactProductionStatus,
   updateSyncedProject,
+  type ArtifactProductionStatus,
   type ProjectVersion,
   type SavedProject,
 } from "@/components/ai/lib/projects-client";
@@ -44,6 +50,15 @@ const PENDING_AUTO_RUN_KEY = "vendiaos.ai-studio.pending-auto-run";
 const PENDING_SOURCE_KEY = "vendiaos.ai-studio.pending-source";
 
 type TransformAction = "variations" | "campaign" | "video" | "image";
+
+const PRODUCTION_STATUSES: ArtifactProductionStatus[] = ["draft", "review", "approved", "exported"];
+
+const productionStatusStyles: Record<ArtifactProductionStatus, string> = {
+  draft: "bg-slate-100 text-slate-600",
+  review: "bg-amber-50 text-amber-700",
+  approved: "bg-emerald-50 text-emerald-700",
+  exported: "bg-blue-50 text-blue-700",
+};
 
 interface TransformationRecommendation {
   action: TransformAction;
@@ -170,14 +185,26 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [compareVersionId, setCompareVersionId] = useState<string | null>(null);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
+  const [productionStatus, setProductionStatus] = useState<ArtifactProductionStatus>("draft");
 
   useEffect(() => {
     queueMicrotask(async () => {
       const result = await loadSyncedProjects();
       setProjects(result.projects);
       setVersions(loadProjectVersions(projectId));
+      setProductionStatus(getArtifactProductionStatus(projectId));
       setHasLoadedProjects(true);
     });
+
+    function handleProductionStatusUpdate() {
+      setProductionStatus(getArtifactProductionStatus(projectId));
+    }
+
+    window.addEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+
+    return () => {
+      window.removeEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+    };
   }, [projectId]);
 
   const project = useMemo(() => {
@@ -352,6 +379,17 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
     URL.revokeObjectURL(url);
   }
 
+  function changeProductionStatus(status: ArtifactProductionStatus) {
+    if (!project) {
+      return;
+    }
+
+    updateArtifactProductionStatus(project.id, status);
+    setProductionStatus(status);
+    setSaveMessage(`Status atualizado para ${artifactProductionStatusLabels[status]}.`);
+    window.setTimeout(() => setSaveMessage(null), 2600);
+  }
+
   if (!hasLoadedProjects) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -405,6 +443,9 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
             <div className="mb-4 flex w-fit items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold capitalize text-blue-700">
               <FileText size={14} />
               {project.mode}
+            </div>
+            <div className={`mb-4 flex w-fit items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${productionStatusStyles[productionStatus]}`}>
+              {artifactProductionStatusLabels[productionStatus]}
             </div>
 
             <h1 className="text-3xl font-bold tracking-tight text-slate-950">{objective}</h1>
@@ -511,6 +552,35 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
         </section>
       ) : (
         <>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-500">Pipeline de producao</h2>
+                <p className="mt-2 text-sm text-slate-500">{artifactProductionStatusDescriptions[productionStatus]}</p>
+              </div>
+              <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${productionStatusStyles[productionStatus]}`}>
+                {artifactProductionStatusLabels[productionStatus]}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-2 sm:grid-cols-4">
+              {PRODUCTION_STATUSES.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => changeProductionStatus(status)}
+                  className={`rounded-xl px-4 py-3 text-sm font-bold transition ${
+                    productionStatus === status
+                      ? productionStatusStyles[status]
+                      : "bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-700"
+                  }`}
+                >
+                  {artifactProductionStatusLabels[status]}
+                </button>
+              ))}
+            </div>
+          </section>
+
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
