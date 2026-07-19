@@ -1,15 +1,10 @@
 import MainLayout from "@/components/layout/MainLayout";
+import ArtifactLibraryDashboard from "@/components/projects/ArtifactLibraryDashboard";
 
 export default function AvatarsPage() {
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <h1 className="text-4xl font-bold">Avatares</h1>
-
-        <p className="text-slate-600">
-          Gerencie todos os seus avatares.
-        </p>
-      </div>
+      <ArtifactLibraryDashboard kind="avatar" />
     </MainLayout>
   );
 }

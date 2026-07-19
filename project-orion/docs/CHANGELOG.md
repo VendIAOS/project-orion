@@ -995,3 +995,12 @@ Proximo passo:
 
 Proximo passo:
 - Criar o projeto na Vercel, configurar variaveis e rodar smoke test na URL publica.
+
+## Build 0.98.0 - Bibliotecas de midia operacionais
+
+- Criada biblioteca operacional reutilizavel para Videos, Imagens e Avatares.
+- Conectadas as rotas `/videos`, `/images` e `/avatars` aos artefatos salvos no VendIAOS.
+- Adicionadas metricas, busca, estados vazios, copia, detalhe e abertura direta no AI Studio por tipo de artefato.
+
+Proximo passo:
+- Evoluir os hubs de midia para pipelines de producao com status, aprovacao e exportacao por canal.
