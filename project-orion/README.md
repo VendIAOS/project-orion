@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VendIAOS
 
-## Getting Started
+Sistema Operacional de Marketing com IA.
 
-First, run the development server:
+Nome interno: Project Orion.
 
-```bash
+## Estado atual
+
+Build interna: 0.96.0
+
+O produto ja possui:
+
+- AI Studio com orquestrador de marketing e rota server-side para OpenAI.
+- Projetos persistidos no Supabase com arquivamento e restauracao.
+- Fila de agentes com execucao, logs, locks, retries, ciclos e auditoria.
+- Billing com limites, eventos, Stripe preparado e portal/checkout.
+- Workspace, membros, convites, login e permissoes por role.
+- Painel `/production` com checklist, smoke test e verificacao de variaveis.
+
+## Rodar localmente
+
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Painel de producao:
 
-## Learn More
+```text
+http://localhost:3000/production
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Validar antes de publicar
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+npm run lint
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Depois abra `/production`, clique em **Verificar agora** e rode **Smoke test**.
 
-## Deploy on Vercel
+## Variaveis principais
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Use `.env.example` como referencia. Valores obrigatorios para deploy externo:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VENDIAOS_DEFAULT_WORKSPACE_ID`
+- `VENDIAOS_DEFAULT_USER_ID`
+- `NEXT_PUBLIC_APP_URL`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_GROWTH`
+- `STRIPE_PRICE_SCALE`
+
+## Deploy
+
+Leia o guia:
+
+```text
+docs/DEPLOYMENT.md
+```
+
+O deploy so deve ser considerado pronto quando `/api/production/deploy-check` e `/api/production/smoke` estiverem sem falhas criticas na URL publica.
