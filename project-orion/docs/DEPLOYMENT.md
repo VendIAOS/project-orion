@@ -28,6 +28,7 @@ Corrija qualquer falha critica antes de seguir.
 
 Configure o projeto na plataforma escolhida, por exemplo Vercel:
 
+- Root Directory: `project-orion`
 - Framework: Next.js
 - Build command: `npm run build`
 - Install command: `npm install`
@@ -38,6 +39,14 @@ Conecte o repositorio correto:
 ```text
 VendIAOS/project-orion
 ```
+
+Importante: o repositorio remoto tem o app dentro da pasta `project-orion`. Se a plataforma perguntar por root directory, selecione exatamente:
+
+```text
+project-orion
+```
+
+Se deixar a raiz do repositorio, o deploy pode tentar usar arquivos soltos fora do app.
 
 ## 3. Variaveis obrigatorias
 
@@ -57,6 +66,8 @@ STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_GROWTH=
 STRIPE_PRICE_SCALE=
 ```
+
+Para o primeiro deploy controlado, `NEXT_PUBLIC_APP_URL` deve ser a URL publica gerada pela plataforma. Depois de configurar o dominio final, atualize essa variavel para o dominio definitivo.
 
 Opcional:
 

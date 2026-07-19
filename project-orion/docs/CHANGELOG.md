@@ -985,3 +985,13 @@ Proximo passo:
 
 Proximo passo:
 - Revisar estado git, preparar commit e publicar o pacote no repositorio remoto.
+
+## Build 0.97.0 - Preparacao Vercel
+
+- Guia de deploy atualizado com `Root Directory: project-orion`.
+- README passou a destacar os comandos corretos para plataformas de deploy.
+- Documentado que `NEXT_PUBLIC_APP_URL` deve usar a URL publica da plataforma no primeiro deploy.
+- Registrado o cuidado com a estrutura atual do repositorio para evitar build no diretorio errado.
+
+Proximo passo:
+- Criar o projeto na Vercel, configurar variaveis e rodar smoke test na URL publica.

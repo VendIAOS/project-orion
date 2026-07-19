@@ -70,4 +70,12 @@ Leia o guia:
 docs/DEPLOYMENT.md
 ```
 
+Na Vercel ou plataforma similar, configure:
+
+```text
+Root Directory: project-orion
+Build Command: npm run build
+Install Command: npm install
+```
+
 O deploy so deve ser considerado pronto quando `/api/production/deploy-check` e `/api/production/smoke` estiverem sem falhas criticas na URL publica.
