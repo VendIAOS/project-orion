@@ -1033,3 +1033,13 @@ Proximo passo:
 
 Proximo passo:
 - Adicionar filtros de pipeline na tela Projetos e relatorio operacional por status.
+
+## Build 1.2.0 - Filtros operacionais por pipeline
+
+- Tela `/projects` ganhou resumo por status de producao: Rascunho, Em revisao, Aprovado e Exportado.
+- Adicionado filtro de pipeline combinado com busca e filtro por modo.
+- Cards de projeto agora exibem o status de producao junto ao modo do artefato.
+- Biblioteca principal passa a funcionar como painel operacional de aprovacao e entrega.
+
+Proximo passo:
+- Criar relatorio dedicado de producao por canal e exportacao.

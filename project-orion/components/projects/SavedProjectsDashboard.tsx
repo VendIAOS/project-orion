@@ -12,6 +12,7 @@ import {
   GitBranch,
   ImageIcon,
   Megaphone,
+  PackageCheck,
   RefreshCcw,
   Search,
   SplitSquareHorizontal,
@@ -29,11 +30,17 @@ import {
   type AgentRunTarget,
 } from "@/components/ai/lib/agent-runs-client";
 import {
+  ARTIFACT_PRODUCTION_STATUS_EVENT,
+  artifactProductionStatusDescriptions,
+  artifactProductionStatusLabels,
   deleteSyncedProject,
+  loadArtifactProductionStatuses,
   loadArchivedProjects,
   loadSyncedProjects,
   restoreArchivedProject,
   syncLocalProjectsToServer,
+  type ArtifactProductionState,
+  type ArtifactProductionStatus,
   type SavedProject,
 } from "@/components/ai/lib/projects-client";
 import OperationalContextPanel from "@/components/auth/OperationalContextPanel";
@@ -45,6 +52,14 @@ const PENDING_AUTO_RUN_KEY = "vendiaos.ai-studio.pending-auto-run";
 const PENDING_SOURCE_KEY = "vendiaos.ai-studio.pending-source";
 
 const MODE_FILTERS = ["campanha", "video", "imagem", "avatar", "analise", "funil"];
+const PRODUCTION_STATUS_FILTERS: Array<"todos" | ArtifactProductionStatus> = ["todos", "draft", "review", "approved", "exported"];
+
+const productionStatusStyles: Record<ArtifactProductionStatus, string> = {
+  draft: "bg-slate-100 text-slate-600",
+  review: "bg-amber-50 text-amber-700",
+  approved: "bg-emerald-50 text-emerald-700",
+  exported: "bg-blue-50 text-blue-700",
+};
 
 type TransformTarget = Extract<AgentRunTarget, "campanha" | "video" | "imagem" | "funil">;
 
@@ -127,10 +142,12 @@ export default function SavedProjectsDashboard() {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [archivedProjects, setArchivedProjects] = useState<SavedProject[]>([]);
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
+  const [productionStatuses, setProductionStatuses] = useState<Record<string, ArtifactProductionState>>({});
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [projectSource, setProjectSource] = useState<"local" | "supabase">("local");
   const [query, setQuery] = useState("");
   const [activeMode, setActiveMode] = useState("todos");
+  const [activeProductionStatus, setActiveProductionStatus] = useState<"todos" | ArtifactProductionStatus>("todos");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -147,8 +164,19 @@ export default function SavedProjectsDashboard() {
       setProjects(projectsResult.projects);
       setProjectSource(projectsResult.source);
       setAgentRuns(runsResult.runs);
+      setProductionStatuses(loadArtifactProductionStatuses());
       setHasLoadedProjects(true);
     });
+
+    function handleProductionStatusUpdate() {
+      setProductionStatuses(loadArtifactProductionStatuses());
+    }
+
+    window.addEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+
+    return () => {
+      window.removeEventListener(ARTIFACT_PRODUCTION_STATUS_EVENT, handleProductionStatusUpdate);
+    };
   }, []);
 
   const modes = useMemo(() => {
@@ -162,11 +190,28 @@ export default function SavedProjectsDashboard() {
 
     return projects.filter((project) => {
       const matchesMode = activeMode === "todos" || project.mode.toLowerCase().includes(activeMode);
+      const productionStatus = productionStatuses[project.id]?.status ?? project.productionStatus ?? "draft";
+      const matchesProductionStatus = activeProductionStatus === "todos" || productionStatus === activeProductionStatus;
       const matchesQuery = !cleanQuery || `${project.mode} ${project.content}`.toLowerCase().includes(cleanQuery);
 
-      return matchesMode && matchesQuery;
+      return matchesMode && matchesProductionStatus && matchesQuery;
     });
-  }, [activeMode, projects, query]);
+  }, [activeMode, activeProductionStatus, productionStatuses, projects, query]);
+
+  const productionSummary = useMemo(() => {
+    return PRODUCTION_STATUS_FILTERS.filter((status) => status !== "todos").map((status) => {
+      const count = projects.filter((project) => {
+        const productionStatus = productionStatuses[project.id]?.status ?? project.productionStatus ?? "draft";
+
+        return productionStatus === status;
+      }).length;
+
+      return {
+        status,
+        count,
+      };
+    });
+  }, [productionStatuses, projects]);
 
   const archivedModes = useMemo(() => {
     const projectModes = Array.from(new Set(archivedProjects.map((project) => project.mode))).filter(Boolean);
@@ -353,6 +398,30 @@ export default function SavedProjectsDashboard() {
 
       <OperationalContextPanel source={projectSource} />
 
+      <section className="grid gap-4 md:grid-cols-4">
+        {productionSummary.map((item) => (
+          <button
+            key={item.status}
+            type="button"
+            onClick={() => setActiveProductionStatus(item.status)}
+            className={`rounded-2xl border p-5 text-left shadow-sm transition ${
+              activeProductionStatus === item.status
+                ? "border-blue-200 bg-blue-50"
+                : "border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <PackageCheck size={20} className="text-slate-500" />
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${productionStatusStyles[item.status]}`}>
+                {artifactProductionStatusLabels[item.status]}
+              </span>
+            </div>
+            <p className="mt-5 text-3xl font-bold text-slate-950">{hasLoadedProjects ? item.count : "..."}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{artifactProductionStatusDescriptions[item.status]}</p>
+          </button>
+        ))}
+      </section>
+
       <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="flex flex-1 items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
@@ -408,6 +477,28 @@ export default function SavedProjectsDashboard() {
               {mode}
             </button>
           ))}
+        </div>
+
+        <div className="border-t border-slate-100 pt-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">Pipeline</p>
+          <div className="flex flex-wrap gap-2">
+            {PRODUCTION_STATUS_FILTERS.map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setActiveProductionStatus(status)}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                  activeProductionStatus === status
+                    ? status === "todos"
+                      ? "bg-slate-900 text-white"
+                      : productionStatusStyles[status]
+                    : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700"
+                }`}
+              >
+                {status === "todos" ? "Todos os status" : artifactProductionStatusLabels[status]}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -515,6 +606,7 @@ export default function SavedProjectsDashboard() {
         <section className="grid gap-4 lg:grid-cols-2">
           {filteredProjects.map((project) => {
             const status = getProjectCardStatus(project, projects);
+            const productionStatus = productionStatuses[project.id]?.status ?? project.productionStatus ?? "draft";
             const recommendedTransformation = getRecommendedTransformation(project.mode);
             const lastRun =
               agentRuns.find((run) => run.artifactId === project.id || run.projectId === project.id) ?? null;
@@ -525,6 +617,9 @@ export default function SavedProjectsDashboard() {
                   <div>
                     <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold capitalize text-blue-700">
                       {project.mode}
+                    </span>
+                    <span className={`ml-2 rounded-full px-3 py-1 text-xs font-semibold ${productionStatusStyles[productionStatus]}`}>
+                      {artifactProductionStatusLabels[productionStatus]}
                     </span>
                     {project.originProjectId && (
                       <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
