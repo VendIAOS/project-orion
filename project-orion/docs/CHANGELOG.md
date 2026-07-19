@@ -1004,3 +1004,12 @@ Proximo passo:
 
 Proximo passo:
 - Evoluir os hubs de midia para pipelines de producao com status, aprovacao e exportacao por canal.
+
+## Build 0.99.0 - Dashboard de midia e release atualizada
+
+- Dashboard principal ganhou atalhos operacionais para Videos, Imagens e Avatares com contagem real de artefatos.
+- Painel `/production` foi atualizado para Build 0.98.0, 83% do MVP robusto e 7 areas core.
+- Release interna passou a reconhecer as bibliotecas de midia como parte do escopo entregue.
+
+Proximo passo:
+- Criar pipeline de producao para aprovar, exportar e acompanhar artefatos por canal.

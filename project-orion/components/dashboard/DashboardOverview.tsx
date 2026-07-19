@@ -6,13 +6,16 @@ import {
   ArrowRight,
   AlertTriangle,
   CheckCircle2,
+  Clapperboard,
   CreditCard,
   Database,
   FolderOpen,
   GitBranch,
+  ImageIcon,
   Archive,
   Layers3,
   Sparkles,
+  UserRound,
   Zap,
 } from "lucide-react";
 
@@ -94,6 +97,30 @@ function getPrimaryMode(projects: SavedProject[]) {
   return Array.from(counts.entries()).sort((first, second) => second[1] - first[1])[0]?.[0] ?? "nenhum";
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function countArtifactsByKind(projects: SavedProject[], kind: "video" | "imagem" | "avatar") {
+  return projects.filter((project) => {
+    const mode = normalizeText(project.mode);
+    const content = normalizeText(project.content);
+
+    if (kind === "video") {
+      return mode.includes("video") || content.includes("roteiro de video");
+    }
+
+    if (kind === "imagem") {
+      return mode.includes("imagem") || content.includes("prompt de imagem");
+    }
+
+    return mode.includes("avatar") || content.includes("avatar");
+  }).length;
+}
+
 export default function DashboardOverview() {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
@@ -151,6 +178,32 @@ export default function DashboardOverview() {
   const supabaseReady = Boolean(health?.services.supabase.ready && health.services.bootstrap.ready);
   const agentUsage = billing?.usage?.agentRuns;
   const billingTone = agentUsage && agentUsage.percent >= 100 ? "red" : agentUsage && agentUsage.percent >= 80 ? "amber" : "emerald";
+  const mediaHubs = [
+    {
+      title: "Videos",
+      description: "Roteiros, Reels, anuncios e criativos em video.",
+      href: "/videos",
+      count: countArtifactsByKind(projects, "video"),
+      icon: Clapperboard,
+      tone: "bg-blue-50 text-blue-700",
+    },
+    {
+      title: "Imagens",
+      description: "Prompts visuais e pecas para campanhas.",
+      href: "/images",
+      count: countArtifactsByKind(projects, "imagem"),
+      icon: ImageIcon,
+      tone: "bg-emerald-50 text-emerald-700",
+    },
+    {
+      title: "Avatares",
+      description: "Perfis, scripts e direcoes de apresentador.",
+      href: "/avatars",
+      count: countArtifactsByKind(projects, "avatar"),
+      icon: UserRound,
+      tone: "bg-violet-50 text-violet-700",
+    },
+  ];
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -214,6 +267,35 @@ export default function DashboardOverview() {
           description={supabaseReady ? "Banco real ativo" : "Complete as configuracoes"}
           tone={supabaseReady ? "emerald" : "slate"}
         />
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        {mediaHubs.map((hub) => {
+          const Icon = hub.icon;
+
+          return (
+            <Link
+              key={hub.href}
+              href={hub.href}
+              className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${hub.tone}`}>
+                  <Icon size={19} />
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 group-hover:bg-white">
+                  {hasLoaded ? hub.count : "..."} artefato(s)
+                </span>
+              </div>
+              <h2 className="mt-5 text-lg font-bold text-slate-950">{hub.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{hub.description}</p>
+              <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-blue-700">
+                Abrir modulo
+                <ArrowRight size={15} />
+              </span>
+            </Link>
+          );
+        })}
       </section>
 
       {projectStats && (

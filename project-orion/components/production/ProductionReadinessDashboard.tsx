@@ -151,6 +151,7 @@ const releaseHighlights = [
   "Fila de agentes com execucao, locks, retries, ciclos, saude operacional e permissoes.",
   "Billing com limites, eventos, Stripe preparado e bloqueios por cota.",
   "Workspace, convites, membros, login, auditoria e checklist de producao.",
+  "Bibliotecas operacionais de videos, imagens e avatares conectadas aos artefatos salvos.",
 ];
 
 const releaseBlockers = [
@@ -475,15 +476,15 @@ export default function ProductionReadinessDashboard() {
               <Sparkles size={14} />
               Release interna
             </div>
-            <h2 className="mt-3 text-2xl font-bold text-slate-900">VendIAOS MVP Build 0.96.0</h2>
+            <h2 className="mt-3 text-2xl font-bold text-slate-900">VendIAOS MVP Build 0.98.0</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Versao candidata para primeiro deploy externo controlado. O produto ja opera como SaaS local com IA,
-              persistencia, agentes, billing, auditoria e painel de producao.
+              persistencia, agentes, billing, auditoria, midia operacional e painel de producao.
             </p>
 
             <div className="mt-4 grid grid-cols-3 gap-3 text-center">
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-2xl font-bold text-slate-900">82%</p>
+                <p className="text-2xl font-bold text-slate-900">83%</p>
                 <p className="mt-1 text-xs font-bold text-slate-500">MVP robusto</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
@@ -491,7 +492,7 @@ export default function ProductionReadinessDashboard() {
                 <p className="mt-1 text-xs font-bold text-slate-500">rotas build</p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-2xl font-bold text-slate-900">6</p>
+                <p className="text-2xl font-bold text-slate-900">7</p>
                 <p className="mt-1 text-xs font-bold text-slate-500">areas core</p>
               </div>
             </div>
