@@ -5,6 +5,15 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "VendIAOS",
   description: "Sistema Operacional de Marketing com IA",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 const GA_MEASUREMENT_ID = "G-6WLEGGYE3Y";
