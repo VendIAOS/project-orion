@@ -15,12 +15,15 @@ import {
 
 export default function Sidebar() {
   return (
-    <aside className="flex h-screen w-64 flex-col bg-slate-900 text-white">
-      <div className="border-b border-slate-700 p-6">
+    <aside className="flex w-full shrink-0 flex-col bg-slate-900 text-white lg:sticky lg:top-0 lg:h-screen lg:w-64">
+      <div className="border-b border-slate-700 p-4 lg:p-6">
         <h1 className="text-2xl font-bold text-blue-400">VendIAOS</h1>
       </div>
 
-      <nav className="flex-1 space-y-2 p-4">
+      <nav
+        aria-label="Navegacao principal"
+        className="flex flex-1 gap-2 overflow-x-auto p-3 [&>a]:min-w-max lg:block lg:space-y-2 lg:p-4 [&>a]:lg:w-full"
+      >
         <Link
           href="/"
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-slate-800"
@@ -102,7 +105,7 @@ export default function Sidebar() {
         </Link>
       </nav>
 
-      <div className="border-t border-slate-700 p-4">
+      <div className="border-t border-slate-700 p-3 lg:p-4">
         <Link
           href="/settings"
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 transition hover:bg-slate-800"
