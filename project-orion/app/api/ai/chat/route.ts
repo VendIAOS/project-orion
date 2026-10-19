@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 
+import {
+  getMissingWorkspaceContextReason,
+  getWorkspaceContextFromRequest,
+} from "@/lib/auth-workspace-context";
+
 type ClientMessage = {
   role: "user" | "assistant";
   content: string;
@@ -8,6 +13,9 @@ type ClientMessage = {
 type ChatRequestBody = {
   messages?: ClientMessage[];
 };
+
+const MAX_MESSAGES = 12;
+const MAX_MESSAGE_LENGTH = 12_000;
 
 type OrchestrationMode = "campanha" | "video" | "imagem" | "avatar" | "analise" | "funil";
 
@@ -90,12 +98,13 @@ function isValidMessage(message: unknown): message is ClientMessage {
   return (
     (candidate.role === "user" || candidate.role === "assistant") &&
     typeof candidate.content === "string" &&
-    candidate.content.trim().length > 0
+    candidate.content.trim().length > 0 &&
+    candidate.content.length <= MAX_MESSAGE_LENGTH
   );
 }
 
 function normalizeMessages(messages: ClientMessage[]) {
-  return messages.slice(-12).map((message) => ({
+  return messages.slice(-MAX_MESSAGES).map((message) => ({
     role: message.role,
     content: message.content.trim(),
   }));
@@ -176,6 +185,15 @@ export async function POST(request: Request) {
       message: createLocalFallback(messages),
       source: "local-fallback",
     });
+  }
+
+  const context = await getWorkspaceContextFromRequest(request);
+
+  if (!context) {
+    return NextResponse.json(
+      { error: "Autenticacao obrigatoria para usar a IA.", details: getMissingWorkspaceContextReason() },
+      { status: 401 },
+    );
   }
 
   const mode = detectMode(messages);

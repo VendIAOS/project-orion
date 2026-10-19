@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -176,6 +177,7 @@ function getTransformationRecommendations(mode: string, derivedCount: number): T
 }
 
 export default function ProjectDetail({ projectId }: ProjectDetailProps) {
+  const router = useRouter();
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
@@ -264,7 +266,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
     const nextProjects = projects.filter((item) => item.id !== project.id);
     setProjects(nextProjects);
     await deleteSyncedProject(project.id, nextProjects);
-    window.location.assign("/projects");
+    router.push("/projects");
   }
 
   function openInStudio() {
@@ -284,7 +286,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       ]),
     );
 
-    window.location.assign("/ai-studio");
+    router.push("/ai-studio");
   }
 
   function transformInStudio(action: TransformAction) {
@@ -320,7 +322,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
         title: getProjectObjective(project.content),
       }),
     );
-    window.location.assign("/ai-studio");
+    router.push("/ai-studio");
   }
 
   function createMarkdownFileName() {

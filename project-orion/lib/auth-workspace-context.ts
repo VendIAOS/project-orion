@@ -41,12 +41,9 @@ export function canOperateAgentRuns(role?: WorkspaceContext["role"]) {
 }
 
 export function getBootstrapWorkspaceContext(): WorkspaceContext | null {
-  // Nunca permitir o fallback de bootstrap em produção, mesmo que as
-  // variáveis de ambiente estejam configuradas por engano.
-  const bootstrapAllowed =
-    process.env.NODE_ENV !== "production" || process.env.VENDIAOS_ALLOW_BOOTSTRAP === "true";
-
-  if (!bootstrapAllowed) {
+  // O fallback usa IDs privilegiados sem uma sessao de usuario. Ele existe
+  // apenas para desenvolvimento local e nunca deve ser habilitado em producao.
+  if (process.env.NODE_ENV === "production") {
     return null;
   }
 

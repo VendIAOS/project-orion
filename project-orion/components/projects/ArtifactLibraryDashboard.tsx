@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Bot,
@@ -135,6 +136,7 @@ function getSourceCount(projects: SavedProject[], projectId: string) {
 }
 
 export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashboardProps) {
+  const router = useRouter();
   const config = LIBRARY_CONFIG[kind];
   const Icon = config.icon;
   const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -216,13 +218,13 @@ export default function ArtifactLibraryDashboard({ kind }: ArtifactLibraryDashbo
         },
       ]),
     );
-    window.location.assign("/ai-studio");
+    router.push("/ai-studio");
   }
 
   function startNewArtifact() {
     window.localStorage.setItem(PENDING_PROMPT_KEY, config.prompt);
     window.localStorage.setItem(PENDING_AUTO_RUN_KEY, "false");
-    window.location.assign("/ai-studio");
+    router.push("/ai-studio");
   }
 
   return (

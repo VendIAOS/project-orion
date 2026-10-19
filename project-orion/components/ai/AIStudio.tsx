@@ -10,6 +10,7 @@ import RecentProjects from "./RecentProjects";
 import { AIMessageData } from "./AIMessage";
 import type { ProjectOrigin } from "./AIMessageActions";
 import type { SavedProject } from "./lib/projects-client";
+import { getAuthHeaders } from "@/components/auth/auth-fetch";
 
 const STORAGE_KEY = "vendiaos.ai-studio.messages";
 const PENDING_PROMPT_KEY = "vendiaos.ai-studio.pending-prompt";
@@ -43,9 +44,9 @@ function createSimulatedResponse(prompt: string) {
 async function requestAssistantMessage(messages: AIMessageData[]) {
   const response = await fetch("/api/ai/chat", {
     method: "POST",
-    headers: {
+    headers: getAuthHeaders({
       "Content-Type": "application/json",
-    },
+    }),
     body: JSON.stringify({
       messages: messages.map((message) => ({
         role: message.role,

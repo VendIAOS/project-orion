@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
@@ -139,6 +140,7 @@ function getPromptForTarget(project: SavedProject, target: TransformTarget) {
 }
 
 export default function SavedProjectsDashboard() {
+  const router = useRouter();
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [archivedProjects, setArchivedProjects] = useState<SavedProject[]>([]);
   const [agentRuns, setAgentRuns] = useState<AgentRun[]>([]);
@@ -328,7 +330,7 @@ export default function SavedProjectsDashboard() {
       ]),
     );
 
-    window.location.assign("/ai-studio");
+    router.push("/ai-studio");
   }
 
   async function transformInStudio(project: SavedProject, target: TransformTarget) {
@@ -367,7 +369,7 @@ export default function SavedProjectsDashboard() {
         runId: result.run.id,
       }),
     );
-    window.location.assign("/ai-studio");
+    router.push("/ai-studio");
   }
 
   return (
